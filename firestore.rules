@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "sharmaprayaagraj@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidMenuItem() {
+      return hasOnlyAllowedFields(['name', 'price', 'description', 'category']) &&
+             request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() < 100 &&
+             request.resource.data.price is string && request.resource.data.price.size() > 0 && request.resource.data.price.size() < 50 &&
+             request.resource.data.description is string && request.resource.data.description.size() < 1000 &&
+             (!('category' in request.resource.data) || (request.resource.data.category is string && request.resource.data.category.size() < 50));
+    }
+
+    function isValidGalleryImage() {
+      return hasOnlyAllowedFields(['src', 'title', 'tags']) &&
+             request.resource.data.src is string && request.resource.data.src.size() > 0 && request.resource.data.src.size() < 500 &&
+             request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() < 100 &&
+             request.resource.data.tags is list && request.resource.data.tags.size() <= 20;
+    }
+
+    function isValidUser() {
+      return hasOnlyAllowedFields(['email', 'role']) &&
+             request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() < 100 &&
+             request.resource.data.role in ['admin', 'user'];
+    }
+
+    function isValidSecurityLog() {
+      return hasOnlyAllowedFields(['action', 'details', 'userAgent', 'timestamp']) &&
+             request.resource.data.action is string && request.resource.data.action.size() < 100 &&
+             (!('details' in request.resource.data) || (request.resource.data.details is string && request.resource.data.details.size() < 1000)) &&
+             (!('userAgent' in request.resource.data) || (request.resource.data.userAgent is string && request.resource.data.userAgent.size() < 500)) &&
+             request.resource.data.timestamp is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /menu/{itemId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidMenuItem();
+      allow update: if isAdmin() && isValidMenuItem();
+      allow delete: if isAdmin();
+    }
+
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidGalleryImage();
+      allow update: if isAdmin() && isValidGalleryImage();
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() && isValidUser();
+      allow update: if isAdmin() && isValidUser();
+      allow delete: if isAdmin();
+    }
+
+    match /security_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isValidSecurityLog(); // Honeypot allows anyone to write a log
+      allow update: if false; // Logs cannot be modified
+      allow delete: if isAdmin();
+    }
+  }
+}

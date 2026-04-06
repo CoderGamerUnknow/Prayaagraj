@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A dish or drink on the menu",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["name", "price", "description"]
+    },
+    "GalleryImage": {
+      "title": "GalleryImage",
+      "description": "An image in the gallery",
+      "type": "object",
+      "properties": {
+        "src": { "type": "string" },
+        "title": { "type": "string" },
+        "tags": { 
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["src", "title", "tags"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with role",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["email", "role"]
+    },
+    "SecurityLog": {
+      "title": "SecurityLog",
+      "description": "Log of suspicious activity from honeypots",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/menu/{itemId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Publicly readable menu items"
+    },
+    "/gallery/{imageId}": {
+      "schema": { "$ref": "#/entities/GalleryImage" },
+      "description": "Publicly readable gallery images"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/security_logs/{logId}": {
+      "schema": { "$ref": "#/entities/SecurityLog" },
+      "description": "Logs of suspicious activity, writable by anyone (honeypot), readable only by admin"
+    }
+  }
+}
